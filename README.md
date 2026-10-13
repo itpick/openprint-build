@@ -71,6 +71,14 @@ need splitting). The CORE One's enclosed chamber makes **ASA** the natural choic
 Caveats: STLs/CAD aren't published yet, and CC BY-NC-SA means personal printing is fine but
 no selling derivatives, credit required, share-alike.
 
+Until they are, [`parts/`](parts/) has our own parametric replica (v2, untested): a
+two-piece frame that fits the bed, a carriage sized for real HP 63/302 cartridges, motor
+mount, display pod, paper ramps and roll arms. All dimensions are measured from Open
+Tools' photos and drawings. Here are the plastic parts loaded in PrusaSlicer, arranged
+across three CORE One beds:
+
+![The printable parts arranged in PrusaSlicer](parts/img/prusaslicer.png)
+
 ## Status
 
 - [ ] Watch for Crowd Supply launch (expected autumn 2026)
