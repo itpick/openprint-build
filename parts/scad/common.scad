@@ -117,7 +117,14 @@ roller_r  = 6;       // TPU roller on the feed shaft (white on theirs)
 paper_z   = feed_z - roller_r;      // 21: top of the platen ribs
 roller_x  = [paper_x0 + 297 * 0.25, paper_x0 + 297 * 0.75];
 roller_l  = 12;
-lead_r    = 15;      // curved lead-in radius at the back of the platen
+lead_r    = 15;      // curve of the paper ramps at the back of the platen
+// 7 white paper ramps along the back (paper_ramp.scad), hooked into slots in
+// the back wall: they turn the paper from the back wall onto the platen
+ramp_n    = 7;
+ramp_w    = 14;
+ramp_x    = [for (i = [0 : ramp_n - 1]) paper_x0 + 297 * (i + 0.5) / ramp_n];
+ramp_tab  = [3.5, 6];             // tab depth into the wall, tab height
+rib_y0    = back_t + lead_r + 1;  // platen ribs start in front of the ramps
 
 // ---- carriage + rods -----------------------------------------------------------
 // Cartridges hang by their ears in front of a vertical contact plate; two rods
@@ -153,6 +160,10 @@ rod_sock  = 12;
 rod_len   = rbr_x + rod_sock + wall;         // rods slide in through the left wall
 feed_len  = coupler_x + 11 + wall;           // feed shaft: left wall to coupler
 idler_x   = 7;                               // idler in the left bracket
+// motor_mount.scad: M3 button-head bolts up through the floor
+mm_foot_t = 8;
+mm_bolts  = [[rbr_x + 5, rod_y - 6], [pulley_x - nema_w / 2 - 6, rod_y - 6],
+             [pulley_x - 8, rod_y - 4], [L - 6, rod_y - 4]];
 
 // ---- roll ------------------------------------------------------------------------
 roll_y   = 40;       // roll axis, from the back face

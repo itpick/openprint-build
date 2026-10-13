@@ -12,8 +12,8 @@
 //   left end   rod + idler bracket; the carriage parks here over the spit pad
 //   back       paper drops down the back wall onto a curved lead-in
 //   floor      ribbed platen at paper_z; TPU pinch pads under the two rollers
-//   right end  rod bracket, carriage motor plate (motor in front, pulley
-//              behind), feed motor plate below it, ports in the end wall
+//   right end  feed motor plate, ports in the end wall; the carriage motor
+//              and the right rod ends sit on a separate motor_mount.scad
 
 include <common.scad>
 
@@ -27,11 +27,6 @@ jb_w      = 12;              // block half-length along X
 key_clr   = 0.15;            // socket clearance per side
 pj_y      = [back_t + lead_r + 6, depth - 3];   // platen joint block, flat part
 
-// Back-wall clip slots (the Openprinter's row of rectangular slots).
-clip_n    = 7;
-clip_w    = 10;
-clip_h    = 4;
-clip_z    = height - 14;
 
 // Pinch pads (pinch_pad.scad, TPU) sit in pockets under the rollers.
 pad_w     = roller_l + 4;
@@ -44,15 +39,11 @@ module floor_and_back(x0, x1) {
     translate([x0, 0, 0]) cube([x1 - x0, back_t, height]);
 }
 
-// Rib profile in (Y, Z): flat at paper_z, with a concave lead-in at the back
-// that turns the paper from the back wall forward, and a chamfered front.
+// Rib profile in (Y, Z): flat at paper_z from just in front of the paper
+// ramps to the front, chamfered at both ends.
 module rib_profile(y1 = depth - 2) {
-    c = [back_t + lead_r, paper_z + lead_r];        // lead-in arc centre
-    difference() {
-        polygon([[back_t, 0], [y1, 0], [y1, paper_z - 2], [y1 - 2, paper_z],
-                 [c[0], paper_z], [back_t, c[1]]]);
-        translate(c) circle(r = lead_r, $fn = 96);
-    }
+    polygon([[rib_y0, 0], [y1, 0], [y1, paper_z - 2], [y1 - 2, paper_z],
+             [rib_y0 + 2, paper_z], [rib_y0, paper_z - 2]]);
 }
 
 module rib(w, y1 = depth - 2) {
@@ -115,12 +106,13 @@ module joint_cuts() {
     for (z = [bj_z[0] + 12, bj_z[0] + 26]) seam_screw(bj_yc, z, "back");
 }
 
-// Clip slots along the top of the back wall, spread over the paper width.
-module clip_slots() {
-    for (i = [0 : clip_n - 1]) {
-        x = paper_x0 + 297 * (i + 0.5) / clip_n;
-        if (abs(x - split_x) > jb_w + clip_w)
-            translate([x - clip_w / 2, -1, clip_z]) cube([clip_w, back_t + 2, clip_h]);
+// Slots in the back wall for the paper ramps' tabs, plus an M3 hole through
+// the floor under each ramp (screw from below into the ramp).
+module ramp_cuts(x0, x1) {
+    for (x = ramp_x) if (x > x0 && x < x1) {
+        translate([x - ramp_w / 2 - 0.3, -1, paper_z - 0.3]) cube([ramp_w + 0.6, back_t + 2, ramp_tab[1] + 0.6]);
+        translate([x, back_t + 8, -1]) cylinder(d = m3, h = base_t + 2);
+        translate([x, back_t + 8, -1]) cylinder(d = 6, h = 1 + 2);
     }
 }
 
@@ -140,6 +132,9 @@ module end_wall(x_inner, dir) {
         // wall-mount / feet holes
         for (y = [20, depth - 25])
             translate([xw + wall / 2, y, 12]) teardrop_x(m4, wall + 2);
+        // right wall: pilot holes for the display pod deck screws
+        if (dir > 0) for (y = [rod_y - 4.5, 63])
+            translate([xw + wall / 2, y, height - 12]) cylinder(d = m3_tap, h = 13);
     }
 }
 
@@ -186,29 +181,12 @@ module right_ports() {
     translate([x, 30, height - 12]) teardrop_x(8.2, wall + 2);                // 5.5x2.1 jack, 8 mm
 }
 
-// Right rod bracket: blind sockets for both rods just past the carriage's
-// far-right position. Rods go in through the left wall and bottom out here.
-module rod_bracket_right() {
-    difference() {
-        translate([rbr_x, rod_y - 9.5, 0]) cube([pulley_x - nema_w / 2 - 1 - rbr_x, 18.5, rod_z[1] + 9]);
-        for (z = rod_z)
-            translate([rbr_x + rod_sock / 2 - 0.5, rod_y, z]) teardrop_x(rod_d + 0.15, rod_sock + 1);
-    }
-}
-
-// Carriage motor (NEMA17, body in front, shaft toward -Y) bolted to the front
-// of a full-height plate; the pulley sits behind the plate in the belt plane.
-// Slide the pulley into the gap, then push the motor shaft through the plate
-// into it from the front. Cable pass at the bottom.
-module carriage_motor_mount() {
-    x0 = pulley_x - nema_w / 2 - 0.5;
-    difference() {
-        translate([x0, mplate_y, 0]) cube([L - x0 + 0.01, mplate_t, height]);
-        translate([pulley_x, mplate_y + mplate_t / 2, belt_zf]) teardrop_y(nema_boss, mplate_t + 2);
-        for (dx = [-1, 1], dz = [-1, 1])
-            translate([pulley_x + dx * nema_holes / 2, mplate_y + mplate_t / 2, belt_zf + dz * nema_holes / 2])
-                teardrop_y(m3, mplate_t + 2);
-        translate([x0 + 6, mplate_y - 1, base_t]) cube([16, mplate_t + 2, 10]);
+// Motor mount bolts: M3 x 12 button heads up through the floor into the
+// motor mount's foot, heads in counterbores under the floor.
+module motor_mount_holes() {
+    for (p = mm_bolts) {
+        translate([p[0], p[1], -1]) cylinder(d = m3, h = base_t + 2);
+        translate([p[0], p[1], -0.01]) cylinder(d = 6.2, h = 2.2);
     }
 }
 
@@ -243,7 +221,7 @@ module half(x0, x1) {
         }
         joint_cuts();
         for (r = roller_x) if (r > x0 && r < x1) pad_pocket(r);
-        clip_slots();
+        ramp_cuts(x0, x1);
         arm_holes();
     }
 }
@@ -264,11 +242,10 @@ module right() {
         union() {
             half(split_x, L);
             end_wall(L, 1);
-            rod_bracket_right();
-            carriage_motor_mount();
             feed_motor_mount();
         }
         right_ports();
+        motor_mount_holes();
     }
 }
 

@@ -37,13 +37,14 @@ Everything prints on a Prusa CORE One (250 × 220 × 270) with no supports.
 
 | | Position |
 |---|---|
-| Paper | x 80–377; drops down the back wall, curved lead-in, flat at z 21 |
+| Paper | x 80–377; drops down the back wall onto 7 curved paper ramps, then flat at z 21 |
 | Feed shaft | y 80, z 27 (= their feed motor centre); 2 TPU rollers Ø12 at x 154 / 303 on TPU pinch pads |
 | Cartridges | contact face y 50.8, nozzles z 22.5 (1.5 above the paper); front half clears the rollers by 1.5 |
 | Carriage rods | y 34.3, z 34 (2× LM8UU) and z 52 (slot); park x 39 (left), far right x 367 |
 | Belt | in the rod plane, pulley axis z 71 (= their carriage motor); idler (2× F623ZZ) in the left bracket |
-| Carriage motor | x 462.85, z 71, body in front of its plate, shaft back to the pulley |
+| Carriage motor | x 462.85, z 71, on the separate motor mount: body in front of the plate, shaft back to the pulley |
 | Feed motor | under it, axis X, inline with the coupler; the bay takes a 34 or 40 mm body |
+| Display pod | x 400–448 (406–454 from the left outer edge), wedge 22 mm above the top, knob centre 25 mm in from the right |
 
 ## Frame joint
 
@@ -58,10 +59,11 @@ Two **M3 × 16** screws with nuts clamp each block.
 
 ## What has and hasn't been checked
 
-- **Checked:** every STL is watertight and fits the bed. All 16 `assembly.scad` checks
+- **Checked:** every STL is watertight and fits the bed. All 17 `assembly.scad` checks
   come out empty, with the carriage and both cartridges at five positions:
-  - **Collisions:** frame, carriage, bought parts, rods, belt (both runs), paper, the
-    two motors against each other, motor screw heads, roll, arms.
+  - **Collisions:** frame (with the motor mount and paper ramps), carriage, bought
+    parts, rods, belt (both runs), paper, the two motors against each other, motor
+    screw heads, roll, arms, display pod.
   - **Install paths:**
     1. The feed motor drops in from the top through its U-slot.
     2. The carriage motor goes in shaft-first from the front.
@@ -76,22 +78,26 @@ Two **M3 × 16** screws with nuts clamp each block.
     PrintSpider project)
   - spit/park pad at the left
   - cutter wheel
-  - frosted cover, display bezel and top board mount
+  - frosted cover and the main board's mount
   - endstop, FFC rail, paper clips, wall-mount wire
 
 ## Assembly order
 
-1. Feed motor: drop it into its plate from the top. Fit the coupler.
-2. Carriage motor: slide the pulley into the gap behind its plate, then push the motor in
-   from the front.
-3. Carriage: press 2× LM8UU into the carriage.
-4. Rods: slide both through the left wall and the carriage until they bottom out in the
-   right bracket. Fit the grub screws.
-5. Feed shaft: slide it through the left wall with the two rollers on it, into the
+1. Motor mount: bolt it to the floor (4× M3 × 12 button heads from below).
+2. Feed motor: drop it into its plate from the top. Fit the coupler.
+3. Carriage motor: slide the pulley into the gap behind the motor mount's plate, then
+   push the motor in from the front.
+4. Carriage: press 2× LM8UU into the carriage.
+5. Rods: slide both through the left wall and the carriage until they bottom out in the
+   motor mount. Fit the grub screws.
+6. Feed shaft: slide it through the left wall with the two rollers on it, into the
    coupler.
-6. Idler and belt: idler in the left bracket. Belt over the pulley and idler, both ends
+7. Idler and belt: idler in the left bracket. Belt over the pulley and idler, both ends
    zip-tied in the carriage clamp.
-7. Pinch pads: drop them into their pockets.
+8. Paper ramps and pinch pads: hook the 7 ramps into the back-wall slots, one M3 × 8
+   each from below; drop the pinch pads into their pockets.
+9. Display pod: LCD glass into the window recess (foam tape behind the board), EC11
+   through the deck, then screw the deck to the motor mount and the end wall.
 
 ## Parts
 
@@ -99,7 +105,10 @@ Two **M3 × 16** screws with nuts clamp each block.
 |---|---|---|---|
 | `cart_fit_gauge` | 1 | any | print first: one holder pocket, check the ears seat |
 | `frame_left` | 1 | PETG | floor, back wall, left end, rod/idler bracket, feed shaft bushing |
-| `frame_right` | 1 | PETG | right end + ports, rod bracket, carriage motor plate, feed motor plate |
+| `frame_right` | 1 | PETG | right end + ports, feed motor plate |
+| `motor_mount` | 1 | PETG | carriage motor plate + gusset + right rod ends; carries the display pod |
+| `display_pod` | 1 | PETG | LCD wedge + deck with the EC11 hole (Waveshare 1.47": glass 36.3 × 19.4) |
+| `paper_ramp` | 7 | PETG (white) | curved guides at the back of the platen, hook into the back wall |
 | `joint_key_platen`, `joint_key_back` | 1 each | PETG | frame joint |
 | `carriage` | 1 | PETG/ASA | prints standing on its front bar |
 | `roll_arm_left`, `roll_arm_right` | 1 each | PETG | bolt to the back wall, M3 × 10 + nuts |
@@ -128,6 +137,9 @@ roughly 0.5–0.7 kg.
 | Beam coupler 5 → 8 mm, D19 L25 | 1 | |
 | M3 × 16 + nuts | 4 | frame joint |
 | M3 × 10 + nuts | 4 | roll arms |
+| M3 × 12 button head | 4 | motor mount to the floor |
+| M3 × 8 | 7 | paper ramps |
+| M3 × 12 self-tap | 4 | display pod deck |
 | M3 grub screws | 2 | rods, in the left bracket |
 | M3 thumb screws × 10 | 2 | press the cartridges onto their contacts |
 | M3 (motors), M2.5 self-tap (Pi), M4 (wall / feet) | | |
@@ -143,5 +155,5 @@ nix shell nixpkgs#openscad --command openscad -D 'check="frame_vs_carriage"' -o 
 
 On macOS with the OpenSCAD app: `OPENSCAD=/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD ./render.sh`.
 
-All dimensions live in `scad/common.scad`. Re-render and re-run the 16 checks after any
+All dimensions live in `scad/common.scad`. Re-render and re-run the 17 checks after any
 change. An empty result ("top level object is empty") means no collision.

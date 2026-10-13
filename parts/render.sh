@@ -22,3 +22,6 @@ r feed_roller        feed_roller.scad
 r pinch_pad          pinch_pad.scad
 r pi_zero_mount      pi_zero_mount.scad
 r encoder_knob       encoder_knob.scad
+r display_pod        display_pod.scad
+r motor_mount        motor_mount.scad
+r paper_ramp         paper_ramp.scad

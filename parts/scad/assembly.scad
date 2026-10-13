@@ -7,12 +7,16 @@ include <common.scad>
 use <frame.scad>
 use <carriage.scad>
 use <roll_arm.scad>
+use <display_pod.scad>
+use <motor_mount.scad>
+use <paper_ramp.scad>
 
 check = "none";
 e = 0.05;                          // shrink envelopes so touching faces don't count
 positions = [c_min, c_min + 60, (c_min + c_max) / 2, c_max - 60, c_max];
 
-module frame_all() { left(); right(); }
+module frame_all() { left(); right(); translate([0, 0, e]) motor_mount(); ramps(); }
+module ramps() for (x = ramp_x) translate([x, e, e]) paper_ramp();
 module carriage_at(c) translate([c, 0, 0]) carriage_body_all();
 
 // cartridge from the scan: snout, body, ears + lid (convex pieces)
@@ -92,4 +96,6 @@ if (check == "install_feed_motor") intersection() { sweep_feed_motor(); frame_al
 if (check == "install_carr_motor") intersection() { sweep_carriage_motor(); union() { frame_all(); motor_feed(); coupler(); } }
 if (check == "install_shafts")     intersection() { sweep_shafts(); union() { frame_all(); motors(); } }
 if (check == "install_carts")      intersection() { sweep_carts(); union() { carriage_at(c_min); frame_all(); } }
-if (check == "none") { frame_all(); moving(); bought(); belt(); roll(); arms(); }
+// pod: lifted by 2e because it rests on the motor mount and the end wall
+if (check == "pod")                intersection() { translate([0, 0, 2 * e]) display_pod(); union() { frame_all(); bought(); belt(); moving(); roll(); arms(); } }
+if (check == "none") { frame_all(); moving(); bought(); belt(); roll(); arms(); display_pod(); }
