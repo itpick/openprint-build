@@ -1,15 +1,22 @@
-// Print this FIRST (5 min). Two 12 mm-tall rings sized exactly like the
-// carriage pockets. If an HP 63/302 doesn't slide in snugly, change cart_w /
-// cart_d / cart_fit in common.scad and re-render everything.
+// Print this FIRST (10 min). One pocket of the carriage holder, short: the
+// cartridge's ears should rest on the two ledges with the body hanging free
+// and the contact face against the back wall. If it doesn't fit, change the
+// cart_* values in common.scad (they come from a 3D scan, not HP) and
+// re-render everything.
 
 include <common.scad>
 
-pw = cart_w + cart_fit;
-pd = cart_d + cart_fit;
+pw = cart_ear_w + cart_fit;     // across the ears
+bw = cart_w + cart_fit;         // body below the ears
+d  = cart_d + cart_fit;
+t  = 2.4;
 
-for (i = [0, 1]) translate([i * (pw + 8), 0, 0])
-    difference() {
-        translate([-2, -2, 0]) cube([pw + 4, pd + 4, 12]);
-        translate([0, 0, -1]) cube([pw, pd, 14]);
-        translate([pw / 2 - 3, -3, 8]) cube([6, 4, 5]);   // which-way-round notch
-    }
+difference() {
+    translate([-pw / 2 - t, -t, 0]) cube([pw + 2 * t, d + 2 * t, 10]);
+    // body opening, all the way through
+    translate([-bw / 2, 0, -1]) cube([bw, d, 12]);
+    // ear pocket above the 2.5 mm ledges
+    translate([-pw / 2, 0, 2.5]) cube([pw, d, 10]);
+    // which-way-round notch on the contact (back) side
+    translate([-3, -t - 1, 6]) cube([6, t + 2, 5]);
+}

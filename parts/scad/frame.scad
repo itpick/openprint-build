@@ -1,16 +1,19 @@
-// PETG frame: a U-tray (floor + back wall) in three sections, with the end
-// sections carrying the end walls, rod sockets, motor/idler mounts, feed-shaft
-// supports and roll arms. Sections join with splice_plate.scad (M3 + nuts).
+// PETG frame: a U-tray (floor + back wall) with two end walls, in two halves
+// that join at x = split_x with butterfly-key joinery (joint_key.scad) and
+// four M3 screws. Each half is 248.25 mm long and fits a CORE One bed.
 //
 //   openscad -D 'part="left"'  -o frame_left.stl  frame.scad
-//   part = left | mid | right | all (preview only)
+//   part = left | right | all (preview only)
 //
 // Print upright (as modelled), no supports: rod/shaft holes are teardrops and
-// every plate is vertical. PETG, 4 perimeters, 25% gyroid.
+// every plate stands on the floor. PETG, 4 perimeters, 25% gyroid.
 //
-// Paper path: roll (top rear) -> drops down behind the feed roller -> wraps
-// under it -> nip against 608 pinch bearings at z = paper_z -> forward over
-// the ribbed platen under the carriage -> out the open front.
+// Layout (follows the Openprinter, see common.scad):
+//   left end   rod + idler bracket; the carriage parks here over the spit pad
+//   back       paper drops down the back wall onto a curved lead-in
+//   floor      ribbed platen at paper_z; TPU pinch pads under the two rollers
+//   right end  rod bracket, carriage motor plate (motor in front, pulley
+//              behind), feed motor plate below it, ports in the end wall
 
 include <common.scad>
 
@@ -18,161 +21,257 @@ part = "all";
 
 rib_pitch = 12;
 rib_t     = 2;
-rib_y0    = 52;              // platen ribs start just in front of the pinch
-splice_w  = 40;              // splice plate length along X (20 each side)
-rod_boss  = 10;
 
-// ---- bits shared by every section ----------------------------------------
+// Joint: half of each block on each side of the seam.
+jb_w      = 12;              // block half-length along X
+key_clr   = 0.15;            // socket clearance per side
+pj_y      = [back_t + lead_r + 6, depth - 3];   // platen joint block, flat part
+
+// Back-wall clip slots (the Openprinter's row of rectangular slots).
+clip_n    = 7;
+clip_w    = 10;
+clip_h    = 4;
+clip_z    = height - 14;
+
+// Pinch pads (pinch_pad.scad, TPU) sit in pockets under the rollers.
+pad_w     = roller_l + 4;
+pad_d     = 20;
+
+// ---- bits shared by both halves -------------------------------------------
 
 module floor_and_back(x0, x1) {
     translate([x0, 0, 0]) cube([x1 - x0, depth, base_t]);
-    translate([x0, 0, 0]) cube([x1 - x0, wall - 2, height]);
+    translate([x0, 0, 0]) cube([x1 - x0, back_t, height]);
 }
 
-// Ribbed platen in the paper zone, clipped to this section. The floor splice
-// plates sit behind the ribs (y < rib_y0), so ribs only dodge the seam itself;
-// one extra rib each side of a seam keeps the paper supported there.
-module platen(x0, x1) {
-    xs = concat([for (x = [paper_x0 - 6 : rib_pitch : paper_x1 + 6]) x],
-                [for (s = split_x) each [s - 3, s + 3]]);
-    for (x = xs)
-        if (x - rib_t / 2 > x0 + 1 && x + rib_t / 2 < x1 - 1)
-            translate([x - rib_t / 2, rib_y0, 0])
-            hull() {
-                cube([rib_t, depth - rib_y0 - 2, base_t]);
-                // chamfered leading edge so the paper rides up onto the ribs
-                translate([0, 3, 0]) cube([rib_t, depth - rib_y0 - 5, paper_z]);
-            }
-}
-
-// Splice holes: two M3 through the floor and two through the back wall on
-// each side of a joint.
-module splice_holes(sx) {
-    for (dx = [-splice_w / 4, splice_w / 4]) {
-        for (y = [15, 40])
-            translate([sx + dx, y, -1]) cylinder(d = m3, h = base_t + 2);
-        for (z = [30, 80])
-            translate([sx + dx, -1, z]) rotate([-90, 0, 0]) cylinder(d = m3, h = wall + 2);
-    }
-}
-
-// Inboard support for the feed shaft (rotating, plain PETG bushing) and the
-// pinch shaft (fixed, press fit). Kept below y = 48 so the belt clears it.
-module shaft_pillar(px) {
+// Rib profile in (Y, Z): flat at paper_z, with a concave lead-in at the back
+// that turns the paper from the back wall forward, and a chamfered front.
+module rib_profile(y1 = depth - 2) {
+    c = [back_t + lead_r, paper_z + lead_r];        // lead-in arc centre
     difference() {
-        translate([px, feed_y - 10, 0]) cube([8, 20, feed_z + 10]);
-        translate([px + 4, feed_y, feed_z])  teardrop_x(rod_d + 0.3, 20);
-        translate([px + 4, feed_y, pinch_z]) teardrop_x(rod_d, 20);
+        polygon([[back_t, 0], [y1, 0], [y1, paper_z - 2], [y1 - 2, paper_z],
+                 [c[0], paper_z], [back_t, c[1]]]);
+        translate(c) circle(r = lead_r, $fn = 96);
     }
 }
 
-// End wall with rod sockets and a roll arm, at the outer side of x_inner.
+module rib(w, y1 = depth - 2) {
+    rotate([90, 0, 90]) linear_extrude(w) rib_profile(y1);
+}
+
+// Ribbed platen in the paper zone, clipped to this half. The ribs skip the
+// platen joint block (itself a wide rib) and the pinch pad seats.
+module platen(x0, x1) {
+    for (x = [paper_x0 - 6 : rib_pitch : paper_x1 + 6])
+        if (x - rib_t / 2 > x0 + 1 && x + rib_t / 2 < x1 - 1
+            && abs(x - split_x) > jb_w + 2
+            && min([for (r = roller_x) abs(x - r)]) > pad_w / 2 + 3)
+            translate([x - rib_t / 2, 0, 0]) rib(rib_t);
+}
+
+// Seat for a TPU pinch pad under each feed roller: a block up to the paper
+// with a pocket the pad drops into.
+module pad_seat(rx) {
+    translate([rx - pad_w / 2 - 2, feed_y - pad_d / 2 - 2, 0])
+        cube([pad_w + 4, pad_d + 4, paper_z - 4]);
+}
+module pad_pocket(rx) {
+    translate([rx - pad_w / 2 - 0.2, feed_y - pad_d / 2 - 0.2, base_t])
+        cube([pad_w + 0.4, pad_d + 0.4, 50]);
+}
+
+// Butterfly key socket, centred on the seam, through z0..z1.
+module key_socket(yc, z0, z1) {
+    translate([split_x, yc, z0 - 1])
+        linear_extrude(z1 - z0 + 2) key_profile(key_clr);
+}
+
+// M3 across the seam: head pocket on the left, nut trap (open to the top
+// for the platen block, to the back for the back block) on the right.
+module seam_screw(y, z, nut_open) {
+    translate([split_x, y, z]) teardrop_x(m3, 2 * jb_w + 2);
+    translate([split_x - jb_w - 1 + (jb_w - 5) / 2, y, z]) teardrop_x(6, jb_w - 5);
+    translate([split_x + 6, y, z])
+        if (nut_open == "top")
+            translate([0, -5.8 / 2, -5.8 / 2]) cube([2.7, 5.8, 50]);
+        else
+            translate([0, -5.8 / 2 - 20, -5.8 / 2]) cube([2.7, 20 + 5.8 / 2, 5.8]);
+}
+
+module joint_blocks() {
+    // Platen block: a wide rib straddling the seam, under the paper.
+    translate([split_x - jb_w, 0, 0]) rib(2 * jb_w, pj_y[1]);
+    // Back block: a rib on the outside of the back wall.
+    translate([split_x - jb_w, bj_y[0], bj_z[0]])
+        cube([2 * jb_w, bj_y[1] - bj_y[0] + back_t, bj_z[1] - bj_z[0]]);
+}
+
+module joint_cuts() {
+    // platen key: through the floor, push in from below or above
+    key_socket((pj_y[0] + pj_y[1]) / 2, 0, paper_z);
+    // back key: drops in from the top; both screws sit below it
+    key_socket(bj_yc, bj_z[1] - back_key_h, bj_z[1] + 5);
+    for (y = [pj_y[0] + 6, pj_y[1] - 8]) seam_screw(y, paper_z / 2 + 1, "top");
+    for (z = [bj_z[0] + 12, bj_z[0] + 26]) seam_screw(bj_yc, z, "back");
+}
+
+// Clip slots along the top of the back wall, spread over the paper width.
+module clip_slots() {
+    for (i = [0 : clip_n - 1]) {
+        x = paper_x0 + 297 * (i + 0.5) / clip_n;
+        if (abs(x - split_x) > jb_w + clip_w)
+            translate([x - clip_w / 2, -1, clip_z]) cube([clip_w, back_t + 2, clip_h]);
+    }
+}
+
+// Roll arm mounting: two M3 through the back wall at each arm.
+module arm_holes() {
+    for (ax = arm_x, z = [height - 40, height - 15])
+        translate([ax + arm_t / 2 + (ax < split_x ? -8 : 8), -1, z])
+            rotate([-90, 0, 0]) cylinder(d = m3, h = back_t + 2);
+}
+
+// End wall with rounded front corners.
 // dir = -1 for the left wall (extends to -X), +1 for the right.
 module end_wall(x_inner, dir) {
     xw = dir < 0 ? x_inner - wall : x_inner;
     difference() {
-        union() {
-            translate([xw, 0, 0]) cube([wall, depth, height]);
-            // boss behind the rod sockets, standing on the floor
-            translate([dir < 0 ? x_inner - 0.01 : x_inner - rod_boss + 0.01, rod_y - 9, 0])
-                cube([rod_boss, 18, rod_z + rod_spacing + 9]);
-            // roll arm with an open-top slot for the spindle's 608 bearing
-            hull() {
-                translate([xw, roll_y - 30, height - 1]) cube([wall, 60, 1]);
-                translate([xw, roll_y, roll_z]) rotate([0, 90, 0])
-                    cylinder(r = 20, h = wall);
-            }
-        }
-        // rod sockets: 14 mm deep (10 mm boss + 4 mm of wall), blind so the
-        // rods can't walk out; rods are L + 8 = 533 mm
-        for (z = [rod_z, rod_z + rod_spacing])
-            translate([x_inner - dir * (rod_boss - 7), rod_y, z])
-                teardrop_x(rod_d + 0.15, rod_boss + 4);
-        // spindle bearing slot
-        translate([xw - 1, roll_y - (b608_d + 0.4) / 2, roll_z])
-            cube([wall + 2, b608_d + 0.4, 50]);
-        translate([xw + wall / 2, roll_y, roll_z]) teardrop_x(b608_d + 0.4, wall + 2);
-        // mounting holes for wall hanging / feet
-        for (y = [20, depth - 20])
-            translate([xw + wall / 2, y, 15]) teardrop_x(m4, wall + 2);
+        translate([xw, 0, 0]) rotate([90, 0, 90]) linear_extrude(wall) end_profile();
+        // wall-mount / feet holes
+        for (y = [20, depth - 25])
+            translate([xw + wall / 2, y, 12]) teardrop_x(m4, wall + 2);
     }
 }
 
-// Carriage motor (NEMA17, shaft toward +Y) on a plate in front of its body.
-module motor_mount_left() {
+// End wall outline in (Y, Z): square at the back, R12 at both front corners.
+module end_profile() {
+    hull() {
+        square([1, height]);
+        translate([depth - corner_r, corner_r]) circle(r = corner_r);
+        translate([depth - corner_r, height - corner_r]) circle(r = corner_r);
+    }
+}
+
+// Left bracket (the Openprinter's black left end block): both rods pass in
+// through the end wall and the bracket (M3 grub screws hold them), the feed
+// shaft runs in a plain bushing in the end wall, and the belt idler (2x F623ZZ
+// on an M3 x 20) sits in an open-top slot at the top.
+module left_bracket() {
+    gap = idler_wd + 1;
     difference() {
-        translate([0, 42, 0]) cube([pulley_x + nema_w / 2 + 3, 6, 92]);
-        translate([pulley_x, 45, belt_zf()]) teardrop_y(nema_boss, 8);
+        translate([-0.01, rod_y - 9.5, 0]) cube([lbr_w, 18.5, belt_zf + 9]);   // 0.5 behind the carriage plate
+        for (z = rod_z)
+            translate([0, rod_y, z]) teardrop_x(rod_d + 0.15, 2 * (wall + lbr_w) + 2);
+        // grub screws: lower from the front face, upper from the top of the rod
+        translate([lbr_w / 2, rod_y, rod_z[0]]) rotate([-90, 0, 0]) cylinder(d = m3_tap, h = 20);
+        translate([lbr_w / 2, rod_y, rod_z[1]]) cylinder(d = m3_tap, h = belt_zf - rod_z[1] - 12);
+        // idler slot, open to the top
+        translate([-1, belt_y - gap / 2, belt_zf - idler_od / 2 - 2]) cube([lbr_w + 2, gap, 50]);
+        translate([idler_x, belt_y, belt_zf]) teardrop_y(m3, 30);
+    }
+}
+
+module left_wall_holes() {
+    for (z = rod_z) translate([-wall / 2, rod_y, z]) teardrop_x(rod_d + 0.15, wall + 2);
+    translate([-wall / 2, feed_y, feed_z]) teardrop_x(rod_d + 0.3, wall + 2);   // feed bushing
+}
+
+// Right end wall ports, as on the Openprinter (VERIFY against your parts):
+// power button at the front, then USB-A, USB-C and the DC jack toward the back.
+module right_ports() {
+    x = L + wall / 2;
+    translate([x, depth - 22, height - 30]) teardrop_x(12.2, wall + 2);         // 12 mm button
+    translate([x, 58, height - 12]) cube([wall + 2, 6.2, 13.6], center = true); // USB-A
+    translate([x, 44, height - 12]) cube([wall + 2, 3.6, 9.4], center = true);  // USB-C
+    translate([x, 30, height - 12]) teardrop_x(8.2, wall + 2);                // 5.5x2.1 jack, 8 mm
+}
+
+// Right rod bracket: blind sockets for both rods just past the carriage's
+// far-right position. Rods go in through the left wall and bottom out here.
+module rod_bracket_right() {
+    difference() {
+        translate([rbr_x, rod_y - 9.5, 0]) cube([pulley_x - nema_w / 2 - 1 - rbr_x, 18.5, rod_z[1] + 9]);
+        for (z = rod_z)
+            translate([rbr_x + rod_sock / 2 - 0.5, rod_y, z]) teardrop_x(rod_d + 0.15, rod_sock + 1);
+    }
+}
+
+// Carriage motor (NEMA17, body in front, shaft toward -Y) bolted to the front
+// of a full-height plate; the pulley sits behind the plate in the belt plane.
+// Slide the pulley into the gap, then push the motor shaft through the plate
+// into it from the front. Cable pass at the bottom.
+module carriage_motor_mount() {
+    x0 = pulley_x - nema_w / 2 - 0.5;
+    difference() {
+        translate([x0, mplate_y, 0]) cube([L - x0 + 0.01, mplate_t, height]);
+        translate([pulley_x, mplate_y + mplate_t / 2, belt_zf]) teardrop_y(nema_boss, mplate_t + 2);
         for (dx = [-1, 1], dz = [-1, 1])
-            translate([pulley_x + dx * nema_holes / 2, 45, belt_zf() + dz * nema_holes / 2])
-                teardrop_y(m3, 8);
-        // feed/pinch shaft ends pass just behind this plate
-    }
-    // motor shelf so the body is supported while the screws go in
-    translate([0, 2, belt_zf() - nema_w / 2 - 4]) cube([pulley_x + nema_w / 2 + 3, 40, 4]);
-}
-
-// Belt idler (GT2 20T, 5 mm bore) between two plates on an M5 x 30.
-module idler_mount_right() {
-    difference() {
-        union() {
-            for (y = [41, 57]) translate([idler_x - 9, y, 0]) cube([18, 6, 80]);
-            translate([idler_x - 9, 41, 74]) cube([18, 22, 6]);
-        }
-        translate([idler_x, 52, belt_zf()]) teardrop_y(m5, 30);
-        // feed shaft + coupler pass through the rear plate
-        translate([idler_x, feed_y, feed_z]) teardrop_x(rod_d + 2, 30);
+            translate([pulley_x + dx * nema_holes / 2, mplate_y + mplate_t / 2, belt_zf + dz * nema_holes / 2])
+                teardrop_y(m3, mplate_t + 2);
+        translate([x0 + 6, mplate_y - 1, base_t]) cube([16, mplate_t + 2, 10]);
     }
 }
 
-// Feed motor (NEMA17, shaft toward -X) against the right end wall; a beam
-// coupler (5 -> 8 mm) joins it to the feed shaft.
+// Feed motor (NEMA17, shaft toward -X) on a plate standing on the floor; a
+// beam coupler joins it to the feed shaft. The boss slot is open to the top,
+// so the motor drops in from above before the carriage motor goes in.
 module feed_motor_mount() {
-    mx = L - 45;             // motor face
+    y0 = mplate_y + mplate_t + 0.5;
     difference() {
-        translate([mx - 6, feed_y - nema_w / 2 - 3, 0])
-            cube([6, nema_w + 6, feed_z + nema_w / 2 + 3]);
-        translate([mx - 3, feed_y, feed_z]) teardrop_x(nema_boss, 8);
+        translate([feed_mx - 6, y0, 0])
+            cube([6, depth - 1 - y0, belt_zf - nema_w / 2 - 1.5]);
+        translate([feed_mx - 3, feed_y, feed_z]) rotate([0, 90, 0]) cylinder(d = nema_boss, h = 8, center = true);
+        translate([feed_mx - 7, feed_y - nema_boss / 2, feed_z]) cube([8, nema_boss, 100]);
         for (dy = [-1, 1], dz = [-1, 1])
-            translate([mx - 3, feed_y + dy * nema_holes / 2, feed_z + dz * nema_holes / 2])
+            translate([feed_mx - 3, feed_y + dy * nema_holes / 2, feed_z + dz * nema_holes / 2])
                 teardrop_x(m3, 8);
     }
 }
 
-function belt_zf() = rod_z + belt_z;      // pulley / idler axis height
+// ---- halves ----------------------------------------------------------------
 
-// ---- sections --------------------------------------------------------------
-
-module section(x0, x1) {
+module half(x0, x1) {
     difference() {
         union() {
             floor_and_back(x0, x1);
             platen(x0, x1);
+            for (r = roller_x) if (r > x0 && r < x1) pad_seat(r);
+            intersection() {
+                joint_blocks();
+                translate([x0, -50, -1]) cube([x1 - x0, 200, 200]);
+            }
         }
-        for (s = split_x) if (s >= x0 - 1 && s <= x1 + 1) splice_holes(s);
+        joint_cuts();
+        for (r = roller_x) if (r > x0 && r < x1) pad_pocket(r);
+        clip_slots();
+        arm_holes();
     }
 }
 
 module left() {
-    section(0, split_x[0]);
-    end_wall(0, -1);
-    motor_mount_left();
-    shaft_pillar(pillar_x[0]);
-}
-
-module mid() {
-    section(split_x[0], split_x[1]);
+    difference() {
+        union() {
+            half(0, split_x);
+            end_wall(0, -1);
+            left_bracket();
+        }
+        left_wall_holes();
+    }
 }
 
 module right() {
-    section(split_x[1], L);
-    end_wall(L, 1);
-    idler_mount_right();
-    feed_motor_mount();
-    shaft_pillar(pillar_x[1]);
+    difference() {
+        union() {
+            half(split_x, L);
+            end_wall(L, 1);
+            rod_bracket_right();
+            carriage_motor_mount();
+            feed_motor_mount();
+        }
+        right_ports();
+    }
 }
 
 if (part == "left")  left();
-if (part == "mid")   mid();
 if (part == "right") right();
-if (part == "all")   { left(); mid(); right(); }
+if (part == "all")   { left(); right(); }

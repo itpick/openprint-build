@@ -1,70 +1,138 @@
-# Printable parts (v0, untested)
+# Printable parts (v2, untested)
 
 Our own parametric OpenSCAD design, **not** Open Tools' files: theirs are unpublished
-(and will be CC BY-NC-SA 4.0 when they are). The layout follows what their photos and
-assembly video show: a U-tray chassis, two 8 mm rods, a front-loading carriage for two
-HP 63/302 cartridges, a GT2 belt, and a second NEMA17 driving a feed shaft through a
-beam coupler. Geometry and dimensions are ours.
+(and will be CC BY-NC-SA 4.0 when they are). v2 copies the Openprinter's layout, measured
+from Open Tools' own material:
 
-Frame printed in PETG per the build plan (theirs is folded sheet metal + an acrylic
-front). Everything fits a Prusa CORE One (250 × 220 × 270) with no supports.
+- **Chassis drawing** ("Tôle Chassis MVP 2", seen in a Crowd Supply photo): 496.5 mm
+  long, end profile about 102 × 106 mm with R12 corners.
+- **Orthographic renders and dimension sheet** (497 × 233 × 111): paper 86–383 mm from
+  the left edge, roll position.
+- **See-through CAD front view of the right end** (opentools.studio image 1180), scaled
+  from the 42.3 mm motor face:
+  - carriage motor flush right, centre 23 mm in and 59 mm above their floor
+  - feed motor under it
+  - their steel floor sits on 12 mm feet; our floor is the desk, so our heights are
+    theirs + 12
+- **Cover-off press photos and the Crowd Supply assembly video:**
+  - carriage with the cartridges hanging in front of a contact plate, rods and belt
+    behind, belt on top
+  - feed shaft low and forward, with two white rollers, driven inline through the beam
+    coupler
+  - left bracket holding the rod ends and the idler
+  - motor label: STEPPERONLINE 17HE12-1204S
+- **Cartridge size:** from a professional 3D scan of an HP 123, the same shell as the
+  63/302/803 (hackaday.io/project/176931). Body 28 × 47 mm, 32.1 mm across the ears,
+  42.3 mm tall, hanging on the ears 36 mm above the nozzles. HP doesn't publish these.
+
+Not copied, because the photos don't resolve them: the exact rod heights and depths, and
+the cutter (the 49 mm wheel at the front right). The positions we use are engineered
+around the measured anchors above.
+
+Everything prints on a Prusa CORE One (250 × 220 × 270) with no supports.
 
 ![assembly](img/assembly.png)
 
+## Layout (frame coordinates: X from the left wall's inner face, Y forward from the back, Z up from the desk)
+
+| | Position |
+|---|---|
+| Paper | x 80–377; drops down the back wall, curved lead-in, flat at z 21 |
+| Feed shaft | y 80, z 27 (= their feed motor centre); 2 TPU rollers Ø12 at x 154 / 303 on TPU pinch pads |
+| Cartridges | contact face y 50.8, nozzles z 22.5 (1.5 above the paper); front half clears the rollers by 1.5 |
+| Carriage rods | y 34.3, z 34 (2× LM8UU) and z 52 (slot); park x 39 (left), far right x 367 |
+| Belt | in the rod plane, pulley axis z 71 (= their carriage motor); idler (2× F623ZZ) in the left bracket |
+| Carriage motor | x 462.85, z 71, body in front of its plate, shaft back to the pulley |
+| Feed motor | under it, axis X, inline with the coupler; the bay takes a 34 or 40 mm body |
+
+## Frame joint
+
+The frame prints as two 248.25 mm halves. A tongue or dovetail would make one half
+longer than the bed allows, so the halves join with **butterfly-key joinery**. Each half
+carries half of two joint blocks:
+
+- **Platen block:** a wide rib under the paper. Its key pushes up through the floor.
+- **Back block:** on the outside of the back wall. Its key drops in from the top.
+
+Two **M3 × 16** screws with nuts clamp each block.
+
 ## What has and hasn't been checked
 
-- **Checked:** every STL is watertight and fits the bed (trimesh). The assembly
-  interference checks pass for the carriage at park, mid and far-right against the
-  frame, motors, pulley/idler, feed + pinch rollers, coupler, belt and paper plane
-  (`assembly.scad`, all six `check=` modes render empty).
-- **Not checked:** nothing has been printed or assembled. HP cartridge dimensions are
-  estimates. **Print `cart_fit_gauge` first** and adjust `cart_w`/`cart_d` in
-  `common.scad`. Clearances are tuned for a 0.4 mm nozzle.
-- **Not designed yet:** cartridge contact flex (harvest from an HP DeskJet carriage or
-  use a YTEC/Magic Brush-style board), the felt park/spit pad, the front cover (acrylic or
-  printed), display bezel, endstop, cable chain/FFC guide, cutter, wall-mount wire.
-- Body is 537 × 130 × 105 mm (theirs ~497 × 111). It's longer and deeper so both motors
-  and the coupler clear the carriage travel. Tightening this is the next iteration.
+- **Checked:** every STL is watertight and fits the bed. All 16 `assembly.scad` checks
+  come out empty, with the carriage and both cartridges at five positions:
+  - **Collisions:** frame, carriage, bought parts, rods, belt (both runs), paper, the
+    two motors against each other, motor screw heads, roll, arms.
+  - **Install paths:**
+    1. The feed motor drops in from the top through its U-slot.
+    2. The carriage motor goes in shaft-first from the front.
+    3. Both rods and the feed shaft slide in through the left wall.
+    4. The cartridges drop into the holder.
+- **Not checked:** nothing has been printed or assembled.
+  - The cartridge numbers come from one scan. **Print `cart_fit_gauge` first.**
+  - The carriage front is at y 101.5 of 102.
+  - The rollers clear the cartridges' front half by 1.5 mm.
+- **Not designed yet:**
+  - contact flex / pogo board behind the plate windows (see the scanned holder in the
+    PrintSpider project)
+  - spit/park pad at the left
+  - cutter wheel
+  - frosted cover, display bezel and top board mount
+  - endstop, FFC rail, paper clips, wall-mount wire
+
+## Assembly order
+
+1. Feed motor: drop it into its plate from the top. Fit the coupler.
+2. Carriage motor: slide the pulley into the gap behind its plate, then push the motor in
+   from the front.
+3. Carriage: press 2× LM8UU into the carriage.
+4. Rods: slide both through the left wall and the carriage until they bottom out in the
+   right bracket. Fit the grub screws.
+5. Feed shaft: slide it through the left wall with the two rollers on it, into the
+   coupler.
+6. Idler and belt: idler in the left bracket. Belt over the pulley and idler, both ends
+   zip-tied in the carriage clamp.
+7. Pinch pads: drop them into their pockets.
 
 ## Parts
 
 | STL | Qty | Material | Notes |
 |---|---|---|---|
-| `cart_fit_gauge` | 1 | any | print first: test-fit both cartridges |
-| `frame_left` | 1 | PETG | end wall, rod bosses, carriage-motor plate + shelf, shaft pillar, roll arm |
-| `frame_mid` | 1 | PETG | floor, back wall, platen ribs |
-| `frame_right` | 1 | PETG | end wall, idler box, feed-motor plate, shaft pillar, roll arm |
-| `splice_floor` | 2 | PETG | one per joint, M3 × 12 + nuts |
-| `splice_back` | 2 | PETG | one per joint, M3 × 12 + nuts |
-| `carriage` | 1 | PETG/ASA | 2× LM8UU pressed in the lower bore; slot rides the upper rod |
-| `roll_hub` | 2 | PETG | 2" core default (`core_id`), M3 grub + nut |
-| `feed_sleeve` | 4 | **TPU 95A** | friction fit on the feed shaft; sleeve compliance = pinch force |
-| `pinch_spacer_0..4` | 1 each | PETG | locate the 608 pinch bearings: 56.5 / 68 / 81 / 67 / 69.5 mm |
-| `pi_zero_mount` | 1 | PETG | Pi Zero W, M2.5 self-tap |
-| `encoder_knob` | 1 | PETG | EC11 D-shaft |
+| `cart_fit_gauge` | 1 | any | print first: one holder pocket, check the ears seat |
+| `frame_left` | 1 | PETG | floor, back wall, left end, rod/idler bracket, feed shaft bushing |
+| `frame_right` | 1 | PETG | right end + ports, rod bracket, carriage motor plate, feed motor plate |
+| `joint_key_platen`, `joint_key_back` | 1 each | PETG | frame joint |
+| `carriage` | 1 | PETG/ASA | prints standing on its front bar |
+| `roll_arm_left`, `roll_arm_right` | 1 each | PETG | bolt to the back wall, M3 × 10 + nuts |
+| `roll_hub` | 2 | PETG | 2" core; 608 pressed into the outer face |
+| `roll_axle` | 2 | PETG | journal sits in the arm hook |
+| `feed_roller` | 2 | **TPU 95A** | friction fit on the feed shaft |
+| `pinch_pad` | 2 | **TPU 95A** | drops into the platen pockets under the rollers |
+| `pi_zero_mount` | 1 | PETG | Pi Zero W (65 × 30, M2.5 on 58 × 23) |
+| `encoder_knob` | 1 | PETG | EC11, Ø6 D-shaft, flat 4.5 |
 
-Print settings: PETG, 0.2 mm layers, 4 perimeters, 25 % gyroid. Frame sections print
-upright as modelled (largest: 181 × 130 × 172 mm). Solid volume is ~1,050 cm³; at these settings expect
-roughly 0.6–0.8 kg of PETG (check in your slicer).
+PETG, 0.2 mm layers, 4 perimeters, 25 % gyroid. Solid volume is about 880 cm³; expect
+roughly 0.5–0.7 kg.
 
 ## Bought parts
 
 | Part | Qty | Notes |
 |---|---|---|
-| 8 mm steel rod, 533 mm | 2 | carriage rods (sockets are 14 mm deep each end) |
-| 8 mm steel rod, ~419 mm | 1 | feed shaft (left pillar to ~12 mm into the coupler) |
-| 8 mm steel rod, 386 mm | 1 | pinch shaft (through both pillars, press fit) |
-| 8 mm steel rod, ~540 mm | 1 | roll spindle |
-| LM8UU | 2 | carriage |
-| 608 bearing | 6 | 4 pinch rollers + 2 roll spindle ends |
-| NEMA17, **≤ 38 mm body** (e.g. 17HS3401) | 2 | carriage + feed. A 40/48 mm body hits the back wall |
-| GT2 20T pulley, 5 mm bore | 1 | carriage motor, hub facing the carriage |
-| GT2 20T toothed idler, 5 mm bore + M5 × 30 | 1 | right end |
-| GT2 6 mm belt | ~0.9 m | both ends clamp into the carriage |
-| Beam coupler 5 → 8 mm | 1 | feed motor to feed shaft |
-| EC11 encoder, Pi Zero W, 1.47" ST7789 TFT, stepper drivers, cartridge driver board | | electronics TBD |
-| M3 screws/nuts, M4 for wall/feet | | |
-| HP 63/302/803 black + colour | 1 each | |
+| 8 mm steel rod (h6), 412 mm | 2 | carriage rods |
+| 8 mm steel rod, 423 mm | 1 | feed shaft (left wall to 11 mm into the coupler) |
+| LM8UU (8 × 15 × 24) | 2 | carriage |
+| 608 bearing (8 × 22 × 7) | 2 | roll hubs |
+| F623ZZ flanged bearing (3 × 10 × 4) + M3 × 20 + nut | 2 | belt idler |
+| NEMA17, 34 mm body (17HS3401; theirs: 17HE12-1204S) | 2 | the feed bay also takes 40 mm (17HS4401). Shaft 21–25 mm, measure it |
+| GT2 20T pulley, 5 mm bore (16 × 16) | 1 | teeth toward the plate |
+| GT2 6 mm belt | ~0.95 m | both ends zip-tied in the carriage clamp |
+| Beam coupler 5 → 8 mm, D19 L25 | 1 | |
+| M3 × 16 + nuts | 4 | frame joint |
+| M3 × 10 + nuts | 4 | roll arms |
+| M3 grub screws | 2 | rods, in the left bracket |
+| M3 thumb screws × 10 | 2 | press the cartridges onto their contacts |
+| M3 (motors), M2.5 self-tap (Pi), M4 (wall / feet) | | |
+| EC11 encoder, Pi Zero W, Waveshare 1.47" ST7789, stepper drivers, cartridge board | | electronics TBD |
+| HP 63 / 302 (or 123 / 803) black + colour | 1 each | |
 
 ## Rebuilding
 
@@ -73,5 +141,7 @@ nix shell nixpkgs#openscad --command ./render.sh          # all STLs -> stl/
 nix shell nixpkgs#openscad --command openscad -D 'check="frame_vs_carriage"' -o /tmp/c.stl scad/assembly.scad
 ```
 
-All dimensions live in `scad/common.scad`. Change rods, cartridge size, paper zone or
-travel there, re-render, and re-run the six `assembly.scad` checks.
+On macOS with the OpenSCAD app: `OPENSCAD=/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD ./render.sh`.
+
+All dimensions live in `scad/common.scad`. Re-render and re-run the 16 checks after any
+change. An empty result ("top level object is empty") means no collision.
