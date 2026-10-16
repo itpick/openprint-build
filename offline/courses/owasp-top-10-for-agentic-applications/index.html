@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>owasp-top-10-for-agentic-applications</title>
+  <link rel="stylesheet" href="../../public/player/assets/index.css">
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ── Network lock ──────────────────────────────────────────────────────────
+// The player bundle carries a Sentry DSN and a marketing lead-capture chunk
+// that phones api.web3forms.com. The exercises' fictional intranet URLs
+// (edr.stormveildata.com etc.) only render in the simulated browser, but the
+// lock guarantees nothing leaves the page regardless: cross-origin fetch/XHR/
+// WebSocket/beacon are rejected BEFORE the player bundle is even imported.
+// Same-origin requests (exercises.json, player chunks, models, audio) and
+// data:/blob: URLs still work.
+(function () {
+  'use strict';
+  var origin = window.location.origin;
+  function isLocal(url) {
+    if (!url) return true;
+    if (url.startsWith('data:') || url.startsWith('blob:')) return true;
+    if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) return true;
+    try { return new URL(url, origin).origin === origin; } catch (e) { return false; }
+  }
+  var _fetch = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    var url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (!isLocal(url)) {
+      console.warn('[offline] blocked fetch to', url);
+      return Promise.reject(new Error('offline: external fetch blocked (' + url + ')'));
+    }
+    return _fetch(input, init);
+  };
+  var _open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (method, url) {
+    if (!isLocal(url)) {
+      console.warn('[offline] blocked XHR to', url);
+      url = 'data:,';
+    }
+    return _open.apply(this, [method, url].concat([].slice.call(arguments, 2)));
+  };
+  var _WS = window.WebSocket;
+  window.WebSocket = function (url) {
+    if (!isLocal(url)) throw new Error('offline: WebSocket blocked (' + url + ')');
+    return new _WS(url);
+  };
+  window.WebSocket.prototype = _WS.prototype;
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon = function (url) {
+      console.warn('[offline] blocked beacon to', url);
+      return true;
+    };
+  }
+  // Sentry reads __SENTRY__ global state; an empty release + no DSN override
+  // is not enough, so fail its transport fast: it only sends on errors, and
+  // the fetch/XHR hooks above already reject its ingest endpoint.
+})();
+</script>
+<script>
+// ── Local SCORM driver ────────────────────────────────────────────────────
+// The player resolves driver methods from window.parent (window here, since
+// there is no iframe). Without these wired, boot logs "[SCORM] driver
+// methods not wired" and student name/id reads crash the text templater
+// (undefined.replace). When embedded in an LMS that DOES expose a SCORM API
+// (e.g. Moodle), this same driver could forward to it — for now, local
+// no-ops keep the session self-contained: progress lives in localStorage.
+(function () {
+  'use strict';
+  var KEY = 'offline-scorm-4bb1486f-e229-422d-9bd7-17e56d287783';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { state = {}; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  window.GetStudentID = function () { return 'offline-student'; };
+  window.GetStudentName = function () { return 'Offline Student'; };
+  window.IsLoaded = function () { return true; };
+  window.CommitData = function () { save(); return true; };
+  window.GetBookmark = function () { return state.bookmark || ''; };
+  window.SetBookmark = function (v) { state.bookmark = String(v); save(); return true; };
+  window.GetDataChunk = function () { return state.suspend || ''; };
+  window.SetDataChunk = function (v) { state.suspend = String(v); save(); return true; };
+  window.GetStatus = function () { return state.status || 'not attempted'; };
+  window.ResetStatus = function () { state.status = 'incomplete'; save(); return true; };
+  window.SetReachedEnd = function () { state.ended = true; save(); return true; };
+  window.SetPassed = function () { state.status = 'passed'; save(); return true; };
+  window.SetFailed = function () { state.status = 'failed'; save(); return true; };
+  window.SetScore = function (v) { state.score = Number(v); save(); return true; };
+  window.SetProgressMeasure = function (v) { state.progress = Number(v); save(); return true; };
+  window.ConcedeControl = function () { return true; };
+  window.RecordInteraction = function () { return true; };
+  window.RecordObjective = function () { return true; };
+  window.SetNavigationRequest = function () { return true; };
+})();
+</script>
+<script>
+// Offline conversion of a RansomLeak remote-iframe SCORM package.
+// Same globals the hosted shell sets; content is local; player is local;
+// the local SCORM driver above keeps progress in localStorage.
+window.IS_SCORM = true;
+window.IS_SCORM_REMOTE = false;
+window.IS_SCORM_REAL_PACKAGE = true;
+window.SCORM_VERSION = '2004';
+window.SCORM_RESUME_MODE = 'normal';
+window.SCORM_QUIZ_THRESHOLD = 100;
+window.PROGRAMMING_LANGUAGE = 'typescript';
+window.DEFAULT_ROOM_TYPE = 'home';
+window.TENANT = 'free-content-distribution';
+window.API_BASE_URL = '';
+window.PACKAGE_ID = '4bb1486f-e229-422d-9bd7-17e56d287783';
+window.PACKAGE_NAME = 'owasp-top-10-for-agentic-applications';
+window.OFFLINE_MODE = true;
+</script>
+<script>
+fetch('./exercises.json')
+  .then(function (r) { return r.json(); })
+  .then(function (data) {
+    window.ORIGIN = window.location.origin;
+    window.SCORM_STUDENT_REF = 'offline';
+    window.SCORM_STUDENT_NAME = 'Offline Student';
+    window.LOCALE = 'en';
+    window.EXERCISES = data;
+    return import('../../public/player/assets/index.js');
+  })
+  .catch(function (e) { console.error('offline player failed', e); });
+</script>
+</body>
+</html>

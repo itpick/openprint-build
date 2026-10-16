@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>protecting-sensitive-information</title>
+  <link rel="stylesheet" href="../../public/player/assets/index.css">
+</head>
+<body>
+<div id="root"></div>
+<script>
+// Offline conversion of a RansomLeak remote-iframe SCORM package.
+// Same globals the hosted shell sets; content is local; player is local;
+// SCORM tracking talks to the LMS parent if one is present.
+window.IS_SCORM = true;
+window.IS_SCORM_REMOTE = false;
+window.IS_SCORM_REAL_PACKAGE = true;
+window.SCORM_VERSION = '2004';
+window.SCORM_RESUME_MODE = 'normal';
+window.SCORM_QUIZ_THRESHOLD = 100;
+window.PROGRAMMING_LANGUAGE = 'typescript';
+window.DEFAULT_ROOM_TYPE = 'home';
+window.TENANT = 'free-content-distribution';
+window.API_BASE_URL = '';
+window.PACKAGE_ID = '250aaf2c-f128-422f-aaaf-d74152de7c40';
+window.PACKAGE_NAME = 'protecting-sensitive-information';
+window.OFFLINE_MODE = true;
+</script>
+<script>
+fetch('./exercises.json')
+  .then(function (r) { return r.json(); })
+  .then(function (data) {
+    window.ORIGIN = window.location.origin;
+    window.SCORM_STUDENT_REF = 'offline';
+    window.SCORM_STUDENT_NAME = 'Offline Student';
+    window.LOCALE = 'en';
+    window.EXERCISES = data;
+    return import('../../public/player/assets/index.js');
+  })
+  .catch(function (e) { console.error('offline player failed', e); });
+</script>
+</body>
+</html>
